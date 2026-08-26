@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gym Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #06060e;
+            --bg-glow-1: rgba(120, 80, 255, 0.12);
+            --bg-glow-2: rgba(0, 200, 255, 0.08);
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-bg-hover: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.10);
+            --glass-border-hover: rgba(255, 255, 255, 0.22);
+            --text-primary: #f0f0ff;
+            --text-secondary: #c5c5d8;
+            --text-muted: #8888a0;
+            --neon-purple: #b388ff;
+            --neon-cyan: #64d8ff;
+            --glow-purple: rgba(179, 136, 255, 0.45);
+            --glow-cyan: rgba(100, 216, 255, 0.40);
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'DM Sans', sans-serif;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+            --transition: 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            width: 100%;
+            max-width: 100vw;
+            overflow-x: hidden;
+            position: relative;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+            opacity: 0.7;
+        }
+
+        body::before {
+            width: 400px;
+            height: 400px;
+            background: var(--bg-glow-1);
+            top: -120px;
+            left: -80px;
+            animation: orbFloat1 18s ease-in-out infinite alternate;
+        }
+
+        body::after {
+            width: 350px;
+            height: 350px;
+            background: var(--bg-glow-2);
+            bottom: -100px;
+            right: -60px;
+            animation: orbFloat2 15s ease-in-out infinite alternate;
+        }
+
+        @keyframes orbFloat1 {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(60px, 40px) scale(1.15); }
+        }
+
+        @keyframes orbFloat2 {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-40px, -30px) scale(1.1); }
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0 18px 24px 18px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 14px 0 0 0;
+            flex-shrink: 0;
+            min-height: 48px;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all var(--transition);
+            font-size: 20px;
+            line-height: 1;
+            flex-shrink: 0;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            pointer-events: auto;
+        }
+
+        .back-btn:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--glass-border-hover);
+            box-shadow: 0 0 16px var(--glow-purple);
+        }
+
+        .back-btn:active {
+            transform: scale(0.88);
+            box-shadow: 0 0 24px var(--glow-purple), 0 0 48px rgba(179, 136, 255, 0.2);
+        }
+
+        .back-btn.hidden {
+            visibility: hidden;
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .view {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+            animation: fadeIn 0.25s ease;
+            padding-top: 8px;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .category-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .category-card {
+            position: relative;
+            padding: 24px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: left;
+            transition: all var(--transition);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 10px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .category-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(179, 136, 255, 0.08) 0%, transparent 50%, rgba(100, 216, 255, 0.06) 100%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+
+        .category-card:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--glass-border-hover);
+            box-shadow: 0 0 24px var(--glow-purple), 0 0 48px rgba(179, 136, 255, 0.15);
+        }
+
+        .category-card:hover::before { opacity: 1; }
+
+        .category-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 0 32px var(--glow-purple), 0 0 64px rgba(179, 136, 255, 0.2);
+            border-color: var(--neon-purple);
+        }
+
+        .category-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .category-icon {
+            width: 44px;
+            height: 44px;
+            color: var(--neon-cyan);
+            filter: drop-shadow(0 0 8px var(--glow-cyan));
+            flex-shrink: 0;
+        }
+
+        .category-icon svg {
+            width: 100%;
+            height: 100%;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .category-name {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 18px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            transition: color var(--transition);
+        }
+
+        .category-card:hover .category-name { color: var(--neon-cyan); }
+
+        .category-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
+        }
+
+        .exercise-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            padding-bottom: 12px;
+        }
+
+        .exercise-card {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 18px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            width: 100%;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .exercise-card:hover {
+            background: var(--glass-bg-hover);
+            border-color: var(--glass-border-hover);
+            box-shadow: 0 0 18px var(--glow-cyan);
+        }
+
+        .exercise-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 0 24px var(--glow-cyan), 0 0 48px rgba(100, 216, 255, 0.15);
+            border-color: var(--neon-cyan);
+        }
+
+        .exercise-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 8px var(--glow-cyan);
+            margin-bottom: 6px;
+            flex-shrink: 0;
+        }
+
+        .exercise-name {
+            font-family: var(--font-display);
+            font-weight: 500;
+            font-size: 16px;
+            letter-spacing: 0.3px;
+            color: var(--text-primary);
+            transition: color var(--transition);
+        }
+
+        .exercise-card:hover .exercise-name { color: var(--neon-cyan); }
+
+        .exercise-brief {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        .detail-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+            padding-bottom: 16px;
+        }
+
+        .detail-image-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: var(--radius-md);
+            background: var(--glass-bg);
+            border: 1.5px dashed var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all var(--transition);
+            overflow: hidden;
+            position: relative;
+            min-height: 170px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .detail-image-placeholder:hover {
+            border-color: var(--glass-border-hover);
+            background: var(--glass-bg-hover);
+            box-shadow: 0 0 20px rgba(179, 136, 255, 0.2);
+        }
+
+        .detail-image-placeholder .placeholder-icon {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-muted);
+            opacity: 0.7;
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.1);
+        }
+
+        .detail-image-placeholder .placeholder-text {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 0 16px;
+        }
+
+        .detail-image-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: var(--radius-md);
+            display: none;
+            z-index: 2;
+        }
+
+        .detail-image-placeholder img.loaded { display: block; }
+
+        .detail-info-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .detail-exercise-name {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 21px;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            line-height: 1.2;
+            word-wrap: break-word;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.08);
+        }
+
+        .sets-reps-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            background: rgba(179, 136, 255, 0.12);
+            border: 1px solid var(--neon-purple);
+            border-radius: 8px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 17px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--neon-purple);
+            align-self: flex-start;
+            margin-top: 4px;
+            white-space: nowrap;
+            text-shadow: 0 0 12px var(--glow-purple);
+            box-shadow: 0 0 16px var(--glow-purple), inset 0 0 12px rgba(179, 136, 255, 0.06);
+            animation: badgeGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes badgeGlow {
+            0%, 100% { box-shadow: 0 0 16px var(--glow-purple), inset 0 0 12px rgba(179, 136, 255, 0.06); }
+            50% { box-shadow: 0 0 28px var(--glow-purple), 0 0 56px rgba(179, 136, 255, 0.2), inset 0 0 16px rgba(179, 136, 255, 0.1); }
+        }
+
+        .detail-description {
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+            font-weight: 400;
+            letter-spacing: 0.2px;
+            word-wrap: break-word;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 14px;
+        }
+
+        .hidden { display: none !important; }
+
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+
+        @media (max-width: 400px) {
+            .category-card { padding: 20px 16px; }
+            .category-name { font-size: 16px; }
+            .detail-exercise-name { font-size: 18px; }
+            .sets-reps-badge { font-size: 15px; padding: 8px 14px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header" id="appHeader">
+            <div class="header-left">
+                <button class="back-btn hidden" id="backBtn" aria-label="Go back" onclick="goBack()">&#8249;</button>
+            </div>
+        </header>
+
+        <main class="view active" id="homeView">
+            <div class="category-grid" id="categoryGrid"></div>
+        </main>
+
+        <main class="view" id="categoryView">
+            <div class="exercise-list" id="exerciseList"></div>
+        </main>
+
+        <main class="view" id="detailView">
+            <div class="detail-container" id="detailContainer"></div>
+        </main>
+    </div>
+
+    <script>
+        (function() {
+            const iconPaths = {
+                chest: '<svg viewBox="0 0 24 24"><path d="M4 6c2-1.5 4-1.5 8 0 4-1.5 6-1.5 8 0-1 1.5-2 2-3 2-1.5 0-2-1-3-1-1 0-1.5 1-3 1-1 0-1.5-1-3-1-1 0-2-0.5-3-2z"/><line x1="4" y1="14" x2="20" y2="14"/></svg>',
+                back: '<svg viewBox="0 0 24 24"><path d="M4 4 L20 4 L12 20 Z"/><line x1="12" y1="12" x2="12" y2="20"/></svg>',
+                legs: '<svg viewBox="0 0 24 24"><path d="M6 4 L6 14 L12 14 L12 20"/><circle cx="6" cy="14" r="2"/><circle cx="12" cy="14" r="2"/><line x1="6" y1="20" x2="6" y2="22"/><line x1="12" y1="20" x2="12" y2="22"/></svg>'
+            };
+
+            const workoutData = [{
+                id: 'chest-day',
+                name: 'Chest Day',
+                icon: iconPaths.chest,
+                exercises: [
+                    { id: 'incline-dumbbell-press', name: 'Incline Dumbbell Press', setsReps: '3 Sets x 12 Reps', description: 'Set an incline bench to a 30-45 degree angle. Hold dumbbells at shoulder level with palms facing forward. Press the weights upward until your arms are fully extended, then lower with control back to the starting position. This exercise targets the upper portion of the pectoral muscles while also engaging the front deltoids and triceps. Focus on a controlled negative for maximum muscle activation.', imageUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Incline-Dumbbell-Press.gif' },
+                    { id: 'chest-seated-machine', name: 'Chest Seated Machine', setsReps: '3 Sets x 12 Reps', description: 'Sit on the machine with your back flat against the pad and feet firmly planted on the floor. Grip the handles at chest level and press forward until your arms are fully extended. Return to the start position with a controlled motion. The guided movement pattern allows for focused tension on the chest muscles with reduced stabilizer involvement, making it ideal for hypertrophy work.', imageUrl: 'https://training.fit/wp-content/uploads/2020/02/schraegbankdruecken-maschine.png' },
+                    { id: 'chest-press-machine', name: 'Chest Press Machine', setsReps: '3 Sets x 12 Reps', description: 'Position yourself in the machine with handles aligned to your mid-chest. Press the handles forward, fully extending your arms while keeping your back against the pad throughout the movement. Return slowly to the starting position. This movement builds overall chest mass and pressing strength while providing stability for heavier loads.', imageUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/08/Lying-Chest-Press-Machine.gif' },
+                    { id: 'pec-deck-fly-machine', name: 'Pec Deck Fly Machine', setsReps: '3 Sets x 12 Reps', description: 'Sit with your back against the pad and arms extended to the sides with elbows slightly bent. Bring the handles together in front of your chest in a hugging motion, squeezing hard at the center point. Slowly return to the start position with control. This isolates the chest with minimal triceps involvement, creating a deep stretch and peak contraction.', imageUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Pec-Deck-Fly.gif' },
+                    { id: 'chest-fly-cable', name: 'Chest Fly Cable', setsReps: '3 Sets x 12 Reps', description: 'Stand between two cable pulleys set at chest height. Step forward slightly and maintain a slight bend in your elbows. Bring your hands together in front of your chest in a wide arc motion, squeezing at the center. Return with control to the start position. Cables maintain constant tension throughout the entire range of motion for superior muscle stimulation.', imageUrl: 'https://i.pinimg.com/originals/06/bc/08/06bc08f20343ec7179604d52c4e0e054.gif' },
+                    { id: 'shoulder-press', name: 'Shoulder Press', setsReps: '3 Sets x 12 Reps', description: 'Sit or stand with dumbbells at shoulder height, palms facing forward. Press the weights overhead until your arms are fully extended, bringing the dumbbells close together at the top. Lower with control back to shoulder level. This compound movement builds overall shoulder size, strength, and stability for daily pressing activities.', imageUrl: '' },
+                    { id: 'dumbbell-squeeze-press', name: 'Dumbbell Squeeze Press', setsReps: '3 Sets x 12 Reps', description: 'Hold two dumbbells together at chest level with palms facing each other. Press them overhead while keeping them pressed firmly together throughout the entire movement. The constant tension between the dumbbells increases activation of the anterior deltoids and upper chest. Lower with control back to the starting position.', imageUrl: '' },
+                    { id: 'lateral-raises', name: 'Lateral Raises', setsReps: '3 Sets x 12 Reps', description: 'Stand with dumbbells at your sides, palms facing inward. Raise your arms outward to shoulder height with a slight bend in the elbows, leading with your elbows rather than your hands. Pause briefly at the top, then lower with control. This exercise targets the middle deltoid for a wider, more aesthetic shoulder appearance.', imageUrl: '' },
+                    { id: 'lateral-raises-cable', name: 'Lateral Raises Cable', setsReps: '3 Sets x 12 Reps', description: 'Set cable pulleys to the lowest position. Stand sideways to the machine and grip the attachment with your outer hand. Raise the cable outward to shoulder height with a slight elbow bend, maintaining constant tension. The cable provides resistance throughout the entire range of motion, increasing time under tension for superior deltoid development.', imageUrl: '' },
+                    { id: 'pec-deck-rear-delt', name: 'Pec Deck - Rear Delt', setsReps: '3 Sets x 12 Reps', description: 'Face the pec deck machine with your chest pressed against the pad. Grip the handles and move your arms backward in a reverse fly motion, keeping arms slightly bent. Squeeze your shoulder blades together at the peak contraction. This targets the rear deltoids and upper back, improving posture and shoulder balance.', imageUrl: '' },
+                    { id: 'rear-delt-machine', name: 'Rear Delt Machine', setsReps: '3 Sets x 12 Reps', description: 'Sit facing the machine with your chest against the pad and arms extended forward. Pull the handles backward in a wide arc motion, squeezing your rear delts at the end of the movement. Return slowly to the start position. This isolates the posterior deltoid for balanced shoulder development and improved posture.', imageUrl: '' },
+                    { id: 'triceps-pushdown', name: 'Triceps Push Down', setsReps: '3 Sets x 12 Reps', description: 'Attach a straight or rope bar to a high pulley. Stand facing the machine with elbows tucked firmly at your sides. Push the bar downward until your arms are fully extended, keeping your upper arms stationary. Return to start with control. This isolates the triceps for maximum arm development and definition.', imageUrl: '' },
+                    { id: 'tricep-pushdowns-reverse', name: 'Tricep Push Downs Reverse', setsReps: '3 Sets x 12 Reps', description: 'Similar to standard pushdowns but with an underhand (supinated) grip on the bar. This variation shifts emphasis to the medial head of the triceps for balanced arm development. Keep elbows locked at your sides and extend fully at the bottom for a complete contraction. Control the weight throughout the full range of motion.', imageUrl: '' }
+                ]
+            }, {
+                id: 'back-day',
+                name: 'Back Day',
+                icon: iconPaths.back,
+                exercises: [
+                    { id: 'pull-ups', name: 'Pull Ups', setsReps: '3 Sets x 12 Reps', description: 'Hang from a pull-up bar with an overhand grip, hands positioned slightly wider than shoulder-width. Pull your body upward until your chin clears the bar, driving your elbows down and back. Lower with control until your arms are fully extended. This fundamental bodyweight exercise builds overall back width, strength, and grip endurance.', imageUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Pull-up.gif' },
+                    { id: 'lat-pulldown-wide-bar', name: 'Lat Pull Down Wide Bar', setsReps: '3 Sets x 12 Reps', description: 'Sit at a lat pulldown station with a wide grip on the bar. Pull the bar down to your upper chest while keeping your torso upright and chest proud. Squeeze your shoulder blades together at the bottom of the movement. Return slowly to the starting position with full control. This targets the lats for V-taper development and overall back width.', imageUrl: 'https://strong-animal-02f89d5138.media.strapiapp.com/55801201_Cable_Neutral_Grip_Wide_Pulldown_VERSION_2_Back_a7efa615e6.png' },
+                    { id: 'lat-pulldown-close', name: 'Lat Pull Down Close', setsReps: '3 Sets x 12 Reps', description: 'Use a close grip attachment on the pulldown machine. Pull the bar down to your chest while focusing on squeezing your lats and keeping your elbows tucked. The close grip shifts emphasis to the lower lats and increases the range of motion for a deeper contraction. Control the weight throughout the full movement.', imageUrl: 'https://www.burnthefatinnercircle.com/members/images/1708.jpg?cb=20251216070625' },
+                    { id: 'lat-pulldown-seated', name: 'Lat Pull Down Seated', setsReps: '3 Sets x 12 Reps', description: 'Sit securely in the machine with your thighs locked under the support pads. Grip the bar and pull down to your collarbone level, driving your elbows down and back while maintaining an upright posture. Control the weight on the return. This variation allows for strict form and maximum lat isolation without momentum.', imageUrl: 'https://images.squarespace-cdn.com/content/v1/5ffcea9416aee143500ea103/1638351904146-GDGXXL9IHXKQKTXULLHF/Seated%2BCable%2BRow.jpeg' },
+                    { id: 'dumbbell-curls', name: 'Dumbbell Curls', setsReps: '3 Sets x 12 Reps', description: 'Stand with dumbbells at your sides, palms facing forward. Curl the weights upward while keeping your elbows stationary at your sides. Squeeze hard at the top of the movement and lower with control. This classic movement builds overall biceps mass and peak contraction. Avoid swinging the weight to maintain strict form.', imageUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif' },
+                    { id: 'hammer-curls', name: 'Hammer Curls', setsReps: '3 Sets x 12 Reps', description: 'Hold dumbbells with a neutral grip, palms facing each other throughout the movement. Curl the weights upward while maintaining the neutral wrist position. This targets the brachialis and brachioradialis muscles, adding thickness and width to the upper arm. Lower with control for maximum benefit.', imageUrl: 'https://training.fit/wp-content/uploads/2020/02/bizeps-hammercurls.png' },
+                    { id: 'shrugs', name: 'Shrugs', setsReps: '3 Sets x 12 Reps', description: 'Stand holding dumbbells or a barbell at your sides with arms fully extended. Elevate your shoulders directly upward toward your ears, squeezing your trapezius muscles hard at the top. Hold for a brief pause, then lower slowly. This isolates the traps for upper back and neck development, improving posture and overall upper body power.', imageUrl: 'https://training.fit/wp-content/uploads/2020/02/shrugs-kurzhantel.png' }
+                ]
+            }, {
+                id: 'leg-day',
+                name: 'Leg Day',
+                icon: iconPaths.legs,
+                exercises: [
+                    { id: 'squat', name: 'Squat', setsReps: '3 Sets x 12 Reps', description: 'Stand with feet shoulder-width apart, barbell positioned across your upper back. Lower your body by bending at the hips and knees until your thighs are at least parallel to the floor, keeping your chest up and core braced. Drive through your heels to return to standing. The squat is the king of all leg exercises, targeting quads, glutes, hamstrings, and core simultaneously.', imageUrl: '' },
+                    { id: 'leg-extension', name: 'Leg Extension', setsReps: '3 Sets x 12 Reps', description: 'Sit on the leg extension machine with your legs positioned under the pad. Extend your knees until your legs are straight, squeezing your quadriceps hard at the top of the movement. Lower with control back to the start position. This isolates the quadriceps for focused development and knee stability.', imageUrl: '' },
+                    { id: 'calf-raises', name: 'Calf Raises', setsReps: '3 Sets x 12 Reps', description: 'Stand on a raised platform with the balls of your feet on the edge and heels hanging off. Lower your heels below the platform level for a deep stretch, then rise up onto your toes as high as possible, squeezing your calves at the peak. This targets both the gastrocnemius and soleus muscles for complete calf development.', imageUrl: '' }
+                ]
+            }];
+
+            let currentView = 'home';
+            let currentCategoryId = null;
+            let currentExerciseId = null;
+
+            const homeView = document.getElementById('homeView');
+            const categoryView = document.getElementById('categoryView');
+            const detailView = document.getElementById('detailView');
+            const categoryGrid = document.getElementById('categoryGrid');
+            const exerciseList = document.getElementById('exerciseList');
+            const detailContainer = document.getElementById('detailContainer');
+            const backBtn = document.getElementById('backBtn');
+
+            function getCategoryById(id) { return workoutData.find(c => c.id === id); }
+            function getExerciseById(catId, exId) {
+                const cat = getCategoryById(catId);
+                if (!cat) return null;
+                return cat.exercises.find(e => e.id === exId) || null;
+            }
+
+            function setView(view) {
+                currentView = view;
+                homeView.classList.toggle('active', view === 'home');
+                categoryView.classList.toggle('active', view === 'category');
+                detailView.classList.toggle('active', view === 'detail');
+                if (view === 'home') {
+                    backBtn.classList.add('hidden');
+                } else {
+                    backBtn.classList.remove('hidden');
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function renderHome() {
+                categoryGrid.innerHTML = '';
+                workoutData.forEach(cat => {
+                    const card = document.createElement('div');
+                    card.className = 'category-card';
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
+                    card.setAttribute('aria-label', cat.name);
+
+                    const topDiv = document.createElement('div');
+                    topDiv.className = 'category-top';
+
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'category-icon';
+                    iconDiv.innerHTML = cat.icon;
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'category-name';
+                    nameDiv.textContent = cat.name;
+
+                    topDiv.appendChild(iconDiv);
+                    topDiv.appendChild(nameDiv);
+
+                    const countDiv = document.createElement('div');
+                    countDiv.className = 'category-count';
+                    countDiv.textContent = cat.exercises.length + ' exercises';
+
+                    card.appendChild(topDiv);
+                    card.appendChild(countDiv);
+
+                    card.addEventListener('click', () => {
+                        currentCategoryId = cat.id;
+                        renderCategory(cat.id);
+                        setView('category');
+                    });
+                    card.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            currentCategoryId = cat.id;
+                            renderCategory(cat.id);
+                            setView('category');
+                        }
+                    });
+                    categoryGrid.appendChild(card);
+                });
+            }
+
+            function renderCategory(catId) {
+                const cat = getCategoryById(catId);
+                if (!cat) return;
+                exerciseList.innerHTML = '';
+                cat.exercises.forEach((ex, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'exercise-card';
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
+                    card.setAttribute('aria-label', ex.name);
+
+                    const numberDiv = document.createElement('div');
+                    numberDiv.className = 'exercise-number';
+                    numberDiv.textContent = String(index + 1).padStart(2, '0');
+
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'exercise-name';
+                    nameEl.textContent = ex.name;
+
+                    const brief = document.createElement('div');
+                    brief.className = 'exercise-brief';
+                    brief.textContent = ex.setsReps;
+
+                    card.appendChild(numberDiv);
+                    card.appendChild(nameEl);
+                    card.appendChild(brief);
+
+                    card.addEventListener('click', () => {
+                        currentExerciseId = ex.id;
+                        renderDetail(catId, ex.id);
+                        setView('detail');
+                    });
+                    card.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            currentExerciseId = ex.id;
+                            renderDetail(catId, ex.id);
+                            setView('detail');
+                        }
+                    });
+                    exerciseList.appendChild(card);
+                });
+            }
+
+            function renderDetail(catId, exId) {
+                const ex = getExerciseById(catId, exId);
+                if (!ex) return;
+                detailContainer.innerHTML = '';
+
+                const imgPh = document.createElement('div');
+                imgPh.className = 'detail-image-placeholder';
+
+                if (ex.imageUrl && ex.imageUrl.trim() !== '') {
+                    const img = document.createElement('img');
+                    img.src = ex.imageUrl;
+                    img.alt = ex.name;
+                    img.loading = 'lazy';
+                    img.className = 'loaded';
+                    imgPh.appendChild(img);
+                } else {
+                    const phIcon = document.createElement('div');
+                    phIcon.className = 'placeholder-icon';
+                    phIcon.textContent = 'IMG';
+                    const phText = document.createElement('div');
+                    phText.className = 'placeholder-text';
+                    phText.textContent = 'ADD IMAGE URL';
+                    imgPh.appendChild(phIcon);
+                    imgPh.appendChild(phText);
+                }
+
+                const infoCard = document.createElement('div');
+                infoCard.className = 'detail-info-card';
+                const nameEl = document.createElement('div');
+                nameEl.className = 'detail-exercise-name';
+                nameEl.textContent = ex.name;
+                const badge = document.createElement('div');
+                badge.className = 'sets-reps-badge';
+                badge.textContent = ex.setsReps;
+                const desc = document.createElement('div');
+                desc.className = 'detail-description';
+                desc.textContent = ex.description;
+
+                infoCard.appendChild(nameEl);
+                infoCard.appendChild(badge);
+                infoCard.appendChild(desc);
+                detailContainer.appendChild(imgPh);
+                detailContainer.appendChild(infoCard);
+            }
+
+            function goBack() {
+                if (currentView === 'detail') {
+                    renderCategory(currentCategoryId);
+                    setView('category');
+                } else if (currentView === 'category') {
+                    renderHome();
+                    setView('home');
+                }
+            }
+
+            window.goBack = goBack;
+
+            function init() {
+                renderHome();
+                setView('home');
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') goBack();
+            });
+            document.addEventListener('touchend', (e) => {
+                if (e.target.closest('.category-card, .exercise-card, .back-btn, .detail-image-placeholder')) e.preventDefault();
+            }, { passive: false });
+            window.addEventListener('popstate', () => {
+                if (currentView === 'detail' || currentView === 'category') goBack();
+            });
+            if (window.history && window.history.pushState) window.history.pushState({ view: 'home' }, '', '');
+
+            init();
+        })();
+    </script>
+</body>
+</html>
