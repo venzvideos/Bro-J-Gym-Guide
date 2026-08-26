@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gym Tracker</title>
+    <title>Gym Tracker – Offline Ready</title>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -174,11 +174,18 @@
             flex: 1;
             flex-direction: column;
             animation: fadeIn 0.25s ease;
-            padding-top: 8px;
+            padding-top: 24px;
+            padding-bottom: 24px;
         }
 
         .view.active {
             display: flex;
+        }
+
+        @media (min-height: 700px) {
+            .view.active {
+                justify-content: center;
+            }
         }
 
         @keyframes fadeIn {
@@ -585,10 +592,12 @@
                 ]
             }];
 
+            // State
             let currentView = 'home';
             let currentCategoryId = null;
             let currentExerciseId = null;
 
+            // DOM elements
             const homeView = document.getElementById('homeView');
             const categoryView = document.getElementById('categoryView');
             const detailView = document.getElementById('detailView');
@@ -652,14 +661,6 @@
                         renderCategory(cat.id);
                         setView('category');
                     });
-                    card.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            currentCategoryId = cat.id;
-                            renderCategory(cat.id);
-                            setView('category');
-                        }
-                    });
                     categoryGrid.appendChild(card);
                 });
             }
@@ -695,14 +696,6 @@
                         currentExerciseId = ex.id;
                         renderDetail(catId, ex.id);
                         setView('detail');
-                    });
-                    card.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            currentExerciseId = ex.id;
-                            renderDetail(catId, ex.id);
-                            setView('detail');
-                        }
                     });
                     exerciseList.appendChild(card);
                 });
@@ -765,23 +758,80 @@
 
             window.goBack = goBack;
 
-            function init() {
-                renderHome();
-                setView('home');
-            }
+            // Initial render
+            renderHome();
+            setView('home');
 
+            // Keyboard escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') goBack();
             });
-            document.addEventListener('touchend', (e) => {
-                if (e.target.closest('.category-card, .exercise-card, .back-btn, .detail-image-placeholder')) e.preventDefault();
-            }, { passive: false });
-            window.addEventListener('popstate', () => {
-                if (currentView === 'detail' || currentView === 'category') goBack();
-            });
-            if (window.history && window.history.pushState) window.history.pushState({ view: 'home' }, '', '');
 
-            init();
+            // Service Worker registration using Blob (single-file offline support)
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    const swCode = `
+                        const CACHE_NAME = 'gym-tracker-v1';
+                        const urlsToCache = ['./'];
+
+                        self.addEventListener('install', event => {
+                            event.waitUntil(
+                                caches.open(CACHE_NAME)
+                                    .then(cache => cache.addAll(urlsToCache))
+                                    .then(() => self.skipWaiting())
+                            );
+                        });
+
+                        self.addEventListener('activate', event => {
+                            event.waitUntil(
+                                caches.keys().then(cacheNames => {
+                                    return Promise.all(
+                                        cacheNames.map(cache => {
+                                            if (cache !== CACHE_NAME) return caches.delete(cache);
+                                        })
+                                    );
+                                }).then(() => self.clients.claim())
+                            );
+                        });
+
+                        self.addEventListener('fetch', event => {
+                            const requestUrl = new URL(event.request.url);
+                            if (requestUrl.pathname.match(/\.(png|jpg|jpeg|gif|webp|svg)$/i)) {
+                                event.respondWith(
+                                    caches.match(event.request).then(cachedResponse => {
+                                        if (cachedResponse) return cachedResponse;
+                                        return fetch(event.request).then(networkResponse => {
+                                            const responseClone = networkResponse.clone();
+                                            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                                            return networkResponse;
+                                        }).catch(() => new Response('', { status: 503, statusText: 'Offline' }));
+                                    })
+                                );
+                            }
+                            event.respondWith(
+                                fetch(event.request)
+                                    .then(response => {
+                                        const responseClone = response.clone();
+                                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                                        return response;
+                                    })
+                                    .catch(() => caches.match(event.request))
+                            );
+                        });
+                    `;
+
+                    const blob = new Blob([swCode], { type: 'text/javascript' });
+                    const swUrl = URL.createObjectURL(blob);
+
+                    navigator.serviceWorker.register(swUrl)
+                        .then(registration => {
+                            console.log('Service Worker registered with scope:', registration.scope);
+                        })
+                        .catch(error => {
+                            console.error('Service Worker registration failed:', error);
+                        });
+                });
+            }
         })();
     </script>
 </body>
